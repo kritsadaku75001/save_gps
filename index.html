@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 400px; margin: auto; background-color: #f9f9f9; }
+    h2 { color: #333; text-align: center; }
+    label { font-weight: bold; display: block; margin-top: 15px; color: #555; }
+    textarea { width: 100%; margin-top: 5px; padding: 12px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; }
+    button { width: 100%; margin-top: 20px; padding: 14px; box-sizing: border-box; font-size: 16px; background-color: #04AA6D; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+    button:active { background-color: #038e5b; }
+    #status { margin-top: 20px; text-align: center; font-weight: bold; color: #d9534f; }
+  </style>
+</head>
+<body>
+  <h2>บันทึกกิจกรรมและตำแหน่ง</h2>
+  
+  <label for="activity">กิจกรรมที่กำลังทำ:</label>
+  <textarea id="activity" rows="4" placeholder="ระบุรายละเอียดงานที่กำลังทำ..."></textarea>
+  
+  <button onclick="submitData()">ส่งข้อมูลพร้อมพิกัด GPS</button>
+  <div id="status"></div>
+
+  <script>
+    function submitData() {
+      var act = document.getElementById('activity').value;
+      var statusDiv = document.getElementById('status');
+      
+      if (!act.trim()) {
+        alert("กรุณากรอกรายละเอียดกิจกรรมก่อนครับ");
+        return;
+      }
+      
+      statusDiv.style.color = "#0275d8";
+      statusDiv.innerText = "กำลังดึงพิกัด GPS...";
+      
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(function(pos) {
+          statusDiv.innerText = "กำลังบันทึกลง Google Sheets...";
+          google.script.run
+            .withSuccessHandler(function(res) {
+              statusDiv.style.color = "#04AA6D";
+              statusDiv.innerText = res;
+              document.getElementById('activity').value = ''; // ล้างข้อความหลังส่งสำเร็จ
+            })
+            .withFailureHandler(function(err) {
+              statusDiv.style.color = "#d9534f";
+              statusDiv.innerText = "เกิดข้อผิดพลาด: " + err.message;
+            })
+            .saveData(act, pos.coords.latitude, pos.coords.longitude);
+        }, function(err) {
+          statusDiv.style.color = "#d9534f";
+          statusDiv.innerText = "ไม่สามารถดึง GPS ได้: กรุณาเปิดใช้งาน Location (GPS) ในมือถือ";
+        }, { enableHighAccuracy: true });
+      } else {
+        statusDiv.style.color = "#d9534f";
+        statusDiv.innerText = "อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับ GPS";
+      }
+    }
+  </script>
+</body>
+</html>
