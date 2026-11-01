@@ -1,8 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="th">
 <head>
+  <meta charset="UTF-8">
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>บันทึกกิจกรรมและตำแหน่ง GPS</title>
   <style>
     body { font-family: sans-serif; padding: 20px; max-width: 400px; margin: auto; background-color: #f9f9f9; }
     h2 { color: #333; text-align: center; }
@@ -38,24 +40,34 @@
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(function(pos) {
           statusDiv.innerText = "กำลังบันทึกลง Google Sheets...";
-          google.script.run
-            .withSuccessHandler(function(res) {
+          
+          var lat = pos.coords.latitude;
+          var lon = pos.coords.longitude;
+          
+          // ⚠️ นำ "URL เว็บแอป" จาก Google Apps Script มาวางแทนที่ข้อความข้างล่างนี้
+          var scriptUrl = "https://script.google.com/macros/s/AKfycbwne2uHjQXbgumMeuqlwTBBO_dHk2foPtLRQ46uRYTuVuEydSY0Vhz_lPJEOCKYRVG_/exec";
+          
+          var fullUrl = scriptUrl + "?activity=" + encodeURIComponent(act) + "&lat=" + lat + "&lon=" + lon;
+          
+          fetch(fullUrl)
+            .then(response => response.text())
+            .then(res => {
               statusDiv.style.color = "#04AA6D";
-              statusDiv.innerText = res;
-              document.getElementById('activity').value = ''; // ล้างข้อความหลังส่งสำเร็จ
+              statusDiv.innerText = "บันทึกข้อมูลเรียบร้อยแล้ว!";
+              document.getElementById('activity').value = '';
             })
-            .withFailureHandler(function(err) {
+            .catch(err => {
               statusDiv.style.color = "#d9534f";
-              statusDiv.innerText = "เกิดข้อผิดพลาด: " + err.message;
-            })
-            .saveData(act, pos.coords.latitude, pos.coords.longitude);
+              statusDiv.innerText = "เกิดข้อผิดพลาด: " + err;
+            });
+            
         }, function(err) {
           statusDiv.style.color = "#d9534f";
-          statusDiv.innerText = "ไม่สามารถดึง GPS ได้: กรุณาเปิดใช้งาน Location (GPS) ในมือถือ";
+          statusDiv.innerText = "ไม่สามารถดึง GPS ได้: กรุณาเปิด Location ในมือถือ";
         }, { enableHighAccuracy: true });
       } else {
         statusDiv.style.color = "#d9534f";
-        statusDiv.innerText = "อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับ GPS";
+        statusDiv.innerText = "เบราว์เซอร์นี้ไม่รองรับ GPS";
       }
     }
   </script>
