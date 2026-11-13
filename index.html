@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- กำหนด Content Security Policy เพื่อความปลอดภัย -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://script.google.com; style-src 'self' 'unsafe-inline';">
+  <!-- แก้ไข CSP ให้รองรับ Script ในหน้าเว็บ -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://script.google.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';">
   <title>บันทึกกิจกรรมและตำแหน่ง GPS</title>
   <style>
     body { font-family: sans-serif; padding: 20px; max-width: 400px; margin: auto; background-color: #f9f9f9; }
@@ -24,7 +24,6 @@
   <label for="activity">กิจกรรมที่กำลังทำ:</label>
   <textarea id="activity" rows="4" maxlength="500" placeholder="ระบุรายละเอียดงานที่กำลังทำ..."></textarea>
   
-  <!-- ช่องกรอกจำนวนถังขยะ -->
   <label for="binCount">จำนวนถังขยะ (ใบ):</label>
   <input type="number" id="binCount" min="1" value="1" placeholder="ระบุจำนวนถังขยะ...">
 
@@ -74,9 +73,9 @@
             return;
           }
           
+          // ใส่ URL Web App ล่าสุดของคุณตรงนี้
           var scriptUrl = "https://script.google.com/macros/s/AKfycbyrWIdIyRONhnaP7uZVJGzvihBwyqQty-BXeXy68K2MlnrgV58RhUd8-xggZX1dx9o/exec";
           
-          // ส่งข้อมูลแบบ POST แยกตัวแปร lat และ lon ออกจากกัน รวมถึงจำนวนถังขยะ (binCount)
           var payload = new URLSearchParams();
           payload.append('activity', act);
           payload.append('binCount', binCount);
