@@ -4,7 +4,8 @@
   <meta charset="UTF-8">
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://script.google.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';">
+  <!-- อนุญาตทั้ง script.google.com และ script.googleusercontent.com -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://script.google.com https://script.googleusercontent.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';">
   <title>บันทึกกิจกรรมและตำแหน่ง GPS</title>
   <style>
     body { font-family: sans-serif; padding: 20px; max-width: 400px; margin: auto; background-color: #f9f9f9; }
