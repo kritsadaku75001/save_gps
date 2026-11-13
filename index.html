@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- กำหนด Content Security Policy เพื่อป้องกันการรัน Script แปลกปลอม -->
+  <!-- กำหนด Content Security Policy เพื่อความปลอดภัย -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://script.google.com; style-src 'self' 'unsafe-inline';">
   <title>บันทึกกิจกรรมและตำแหน่ง GPS</title>
   <style>
     body { font-family: sans-serif; padding: 20px; max-width: 400px; margin: auto; background-color: #f9f9f9; }
     h2 { color: #333; text-align: center; }
     label { font-weight: bold; display: block; margin-top: 15px; color: #555; }
-    textarea { width: 100%; margin-top: 5px; padding: 12px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; }
+    textarea, input[type="number"] { width: 100%; margin-top: 5px; padding: 12px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; }
     button { width: 100%; margin-top: 20px; padding: 14px; box-sizing: border-box; font-size: 16px; background-color: #04AA6D; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
     button:active { background-color: #038e5b; }
     button:disabled { background-color: #cccccc; cursor: not-allowed; }
@@ -22,14 +22,16 @@
   <h2>บันทึกกิจกรรมและตำแหน่ง</h2>
   
   <label for="activity">กิจกรรมที่กำลังทำ:</label>
-  <!-- กำหนดความยาวสูงสุด (maxlength) เพื่อป้องกัน Buffer Overflow หรือการส่งข้อมูลขนาดใหญ่เกินไป -->
   <textarea id="activity" rows="4" maxlength="500" placeholder="ระบุรายละเอียดงานที่กำลังทำ..."></textarea>
   
+  <!-- ช่องกรอกจำนวนถังขยะ -->
+  <label for="binCount">จำนวนถังขยะ (ใบ):</label>
+  <input type="number" id="binCount" min="1" value="1" placeholder="ระบุจำนวนถังขยะ...">
+
   <button id="submitBtn" onclick="submitData()">ส่งข้อมูลพร้อมพิกัด GPS</button>
   <div id="status"></div>
 
   <script>
-    // ฟังก์ชันตรวจสอบความถูกต้องของพิกัด GPS (Latitude และ Longitude)
     function isValidLatLon(lat, lon) {
       return typeof lat === 'number' && !isNaN(lat) && lat >= -90 && lat <= 90 &&
              typeof lon === 'number' && !isNaN(lon) && lon >= -180 && lon <= 180;
@@ -37,16 +39,23 @@
 
     function submitData() {
       var actInput = document.getElementById('activity');
+      var binCountInput = document.getElementById('binCount');
       var statusDiv = document.getElementById('status');
       var submitBtn = document.getElementById('submitBtn');
+      
       var act = actInput.value.trim();
+      var binCount = binCountInput.value.trim();
       
       if (!act) {
         alert("กรุณากรอกรายละเอียดกิจกรรมก่อนครับ");
         return;
       }
 
-      // ป้องกันการกดปุ่มซ้ำขณะกำลังส่งข้อมูล (Rate Limiting / Double Submission)
+      if (!binCount || Number(binCount) <= 0) {
+        alert("กรุณากรอกจำนวนถังขยะให้ถูกต้อง");
+        return;
+      }
+
       submitBtn.disabled = true;
       statusDiv.style.color = "#0275d8";
       statusDiv.innerText = "กำลังดึงพิกัด GPS...";
@@ -58,7 +67,6 @@
           var lat = Number(pos.coords.latitude);
           var lon = Number(pos.coords.longitude);
 
-          // ตรวจสอบความถูกต้องของพิกัดก่อนส่ง
           if (!isValidLatLon(lat, lon)) {
             statusDiv.style.color = "#d9534f";
             statusDiv.innerText = "เกิดข้อผิดพลาด: พิกัด GPS ไม่ถูกต้อง";
@@ -68,13 +76,13 @@
           
           var scriptUrl = "https://script.google.com/macros/s/AKfycbwne2uHjQXbgumMeuqlwTBBO_dHk2foPtLRQ46uRYTuVuEydSY0Vhz_lPJEOCKYRVG_/exec";
           
-          // เปลี่ยนมาใช้ POST ผ่าน FormData / URLSearchParams เพื่อไม่ให้ข้อมูลสำคัญโชว์หราอยู่บน URL Query String
+          // ส่งข้อมูลแบบ POST แยกตัวแปร lat และ lon ออกจากกัน รวมถึงจำนวนถังขยะ (binCount)
           var payload = new URLSearchParams();
           payload.append('activity', act);
+          payload.append('binCount', binCount);
           payload.append('lat', lat);
           payload.append('lon', lon);
 
-          // ส่งข้อมูลด้วยวิธี POST (แนะนำให้ฝั่ง Google Apps Script รองรับ e.parameter หรือ doPost ด้วย)
           fetch(scriptUrl, {
             method: 'POST',
             body: payload
@@ -84,6 +92,7 @@
               statusDiv.style.color = "#04AA6D";
               statusDiv.innerText = "บันทึกข้อมูลเรียบร้อยแล้ว!";
               actInput.value = '';
+              binCountInput.value = '1';
               submitBtn.disabled = false;
             })
             .catch(err => {
