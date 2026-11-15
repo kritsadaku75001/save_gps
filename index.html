@@ -4,14 +4,13 @@
   <meta charset="UTF-8">
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- อนุญาตทั้ง script.google.com และ script.googleusercontent.com -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://script.google.com https://script.googleusercontent.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://script.google.com https://script.googleusercontent.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';">
   <title>บันทึกกิจกรรมและตำแหน่ง GPS</title>
   <style>
     body { font-family: sans-serif; padding: 20px; max-width: 400px; margin: auto; background-color: #f9f9f9; }
     h2 { color: #333; text-align: center; }
     label { font-weight: bold; display: block; margin-top: 15px; color: #555; }
-    input[type="text"], input[type="number"], textarea { width: 100%; margin-top: 5px; padding: 12px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; }
+    input[type="text"], input[type="number"], input[type="password"], textarea { width: 100%; margin-top: 5px; padding: 12px; box-sizing: border-box; font-size: 16px; border: 1px solid #ccc; border-radius: 6px; }
     .row { display: flex; gap: 10px; }
     .col { flex: 1; }
     button { width: 100%; margin-top: 20px; padding: 14px; box-sizing: border-box; font-size: 16px; background-color: #04AA6D; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
@@ -23,45 +22,69 @@
 <body>
   <h2>บันทึกกิจกรรมและตำแหน่ง</h2>
 
+  <label for="pin">รหัสเจ้าหน้าที่:</label>
+  <input type="password" id="pin" placeholder="กรอกรหัสที่ได้รับ" autocomplete="off">
+
   <div class="row">
     <div class="col">
       <label for="houseNo">บ้านเลขที่:</label>
-      <input type="text" id="houseNo" placeholder="เช่น 112 หรือ 112/1">
+      <input type="text" id="houseNo" maxlength="20" placeholder="เช่น 112 หรือ 112/1">
     </div>
     <div class="col">
       <label for="moo">หมู่ที่:</label>
-      <input type="number" id="moo" min="1" placeholder="ระบุหมู่...">
+      <input type="number" id="moo" min="1" max="99" placeholder="ระบุหมู่...">
     </div>
   </div>
-  
+
   <label for="activity">กิจกรรมที่กำลังทำ:</label>
   <textarea id="activity" rows="4" maxlength="500" placeholder="ระบุรายละเอียดงานที่กำลังทำ..."></textarea>
-  
+
   <label for="binCount">จำนวนถังขยะ (ใบ):</label>
-  <input type="number" id="binCount" min="1" value="1" placeholder="ระบุจำนวนถังขยะ...">
+  <input type="number" id="binCount" min="1" max="1000" value="1" placeholder="ระบุจำนวนถังขยะ...">
 
   <button id="submitBtn" onclick="submitData()">ส่งข้อมูลพร้อมพิกัด GPS</button>
   <div id="status"></div>
 
   <script>
+    // ถ้า Deploy ใหม่ ให้แก้ URL ตรงนี้
+    var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyVOyaF-RvhZQREq88LGreyCreXUUReJo2LwOZeu9npa6gBfBS1IROkMKntNzgX4sQd/exec";
+
+    // จำ PIN ไว้ในเครื่องนี้ จะได้ไม่ต้องกรอกทุกครั้ง
+    try {
+      var savedPin = localStorage.getItem('survey_pin');
+      if (savedPin) document.getElementById('pin').value = savedPin;
+    } catch (e) {}
+
     function isValidLatLon(lat, lon) {
       return typeof lat === 'number' && !isNaN(lat) && lat >= -90 && lat <= 90 &&
              typeof lon === 'number' && !isNaN(lon) && lon >= -180 && lon <= 180;
     }
 
+    function showStatus(msg, color) {
+      var statusDiv = document.getElementById('status');
+      statusDiv.style.color = color;
+      statusDiv.innerText = msg;
+    }
+
     function submitData() {
+      var pinInput = document.getElementById('pin');
       var houseNoInput = document.getElementById('houseNo');
       var mooInput = document.getElementById('moo');
       var actInput = document.getElementById('activity');
       var binCountInput = document.getElementById('binCount');
-      var statusDiv = document.getElementById('status');
       var submitBtn = document.getElementById('submitBtn');
-      
+
+      var pin = pinInput.value.trim();
       var houseNo = houseNoInput.value.trim();
       var moo = mooInput.value.trim();
       var act = actInput.value.trim();
       var binCount = binCountInput.value.trim();
-      
+
+      if (!pin) {
+        alert("กรุณากรอกรหัสเจ้าหน้าที่ก่อนครับ");
+        return;
+      }
+
       if (!houseNo) {
         alert("กรุณากรอกบ้านเลขที่ก่อนครับ");
         return;
@@ -83,63 +106,68 @@
       }
 
       submitBtn.disabled = true;
-      statusDiv.style.color = "#0275d8";
-      statusDiv.innerText = "กำลังดึงพิกัด GPS...";
-      
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(pos) {
-          statusDiv.innerText = "กำลังบันทึกลง Google Sheets...";
-          
-          var lat = Number(pos.coords.latitude);
-          var lon = Number(pos.coords.longitude);
+      showStatus("กำลังดึงพิกัด GPS...", "#0275d8");
 
-          if (!isValidLatLon(lat, lon)) {
-            statusDiv.style.color = "#d9534f";
-            statusDiv.innerText = "เกิดข้อผิดพลาด: พิกัด GPS ไม่ถูกต้อง";
-            submitBtn.disabled = false;
-            return;
-          }
-          
-          var scriptUrl = "https://script.google.com/macros/s/AKfycbwDGZhIRd-sK-RbkCBZyFJxPUqnyfFDumvm0qQovKOUnYpZyoHI-pPW3E-IEEZpLIFQ/exec";
-          
-          var payload = new URLSearchParams();
-          payload.append('houseNo', houseNo);
-          payload.append('moo', moo);
-          payload.append('activity', act);
-          payload.append('binCount', binCount);
-          payload.append('lat', lat);
-          payload.append('lon', lon);
-
-          fetch(scriptUrl, {
-            method: 'POST',
-            mode: 'no-cors',
-            body: payload
-          })
-            .then(() => {
-              statusDiv.style.color = "#04AA6D";
-              statusDiv.innerText = "บันทึกข้อมูลเรียบร้อยแล้ว!";
-              houseNoInput.value = '';
-              mooInput.value = '';
-              actInput.value = '';
-              binCountInput.value = '1';
-              submitBtn.disabled = false;
-            })
-            .catch(err => {
-              statusDiv.style.color = "#d9534f";
-              statusDiv.innerText = "เกิดข้อผิดพลาดในการเชื่อมต่อ";
-              submitBtn.disabled = false;
-            });
-            
-        }, function(err) {
-          statusDiv.style.color = "#d9534f";
-          statusDiv.innerText = "ไม่สามารถดึง GPS ได้: กรุณาเปิด Location ในมือถือ";
-          submitBtn.disabled = false;
-        }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
-      } else {
-        statusDiv.style.color = "#d9534f";
-        statusDiv.innerText = "เบราว์เซอร์นี้ไม่รองรับ GPS";
+      if (!navigator.geolocation) {
+        showStatus("เบราว์เซอร์นี้ไม่รองรับ GPS", "#d9534f");
         submitBtn.disabled = false;
+        return;
       }
+
+      navigator.geolocation.getCurrentPosition(function(pos) {
+        showStatus("กำลังบันทึกลง Google Sheets...", "#0275d8");
+
+        var lat = Number(pos.coords.latitude);
+        var lon = Number(pos.coords.longitude);
+
+        if (!isValidLatLon(lat, lon)) {
+          showStatus("เกิดข้อผิดพลาด: พิกัด GPS ไม่ถูกต้อง", "#d9534f");
+          submitBtn.disabled = false;
+          return;
+        }
+
+        var payload = new URLSearchParams();
+        payload.append('pin', pin);
+        payload.append('houseNo', houseNo);
+        payload.append('moo', moo);
+        payload.append('activity', act);
+        payload.append('binCount', binCount);
+        payload.append('lat', lat);
+        payload.append('lon', lon);
+
+        function clearForm() {
+          houseNoInput.value = '';
+          mooInput.value = '';
+          actInput.value = '';
+          binCountInput.value = '1';
+        }
+
+        fetch(SCRIPT_URL, { method: 'POST', body: payload })
+          .then(function(res) { return res.text(); })
+          .then(function(text) {
+            if (text.indexOf('OK') === 0) {
+              try { localStorage.setItem('survey_pin', pin); } catch (e) {}
+              showStatus("บันทึกข้อมูลเรียบร้อยแล้ว!", "#04AA6D");
+              clearForm();
+            } else {
+              // เซิร์ฟเวอร์ตอบ ERROR พร้อมเหตุผล (เช่น PIN ไม่ถูกต้อง)
+              showStatus(text.replace(/^ERROR:\s*/, 'ไม่สำเร็จ: '), "#d9534f");
+              if (text.indexOf('PIN') !== -1) {
+                try { localStorage.removeItem('survey_pin'); } catch (e) {}
+              }
+            }
+            submitBtn.disabled = false;
+          })
+          .catch(function() {
+            // อ่านผลตอบกลับไม่ได้ (เช่น ติด CORS) แต่ข้อมูลอาจถูกส่งไปแล้ว
+            showStatus("ส่งข้อมูลแล้ว แต่ยืนยันผลไม่ได้ กรุณาตรวจในชีตอีกครั้ง", "#f0ad4e");
+            submitBtn.disabled = false;
+          });
+
+      }, function(err) {
+        showStatus("ไม่สามารถดึง GPS ได้: กรุณาเปิด Location ในมือถือ", "#d9534f");
+        submitBtn.disabled = false;
+      }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
     }
   </script>
 </body>
